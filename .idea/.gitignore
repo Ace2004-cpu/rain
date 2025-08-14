@@ -1,0 +1,60 @@
+import numpy as np
+import skfuzzy as fuzz
+from skfuzzy import control as ctrl
+
+# Define fuzzy variables and membership functions
+humidity = ctrl.Antecedent(np.arange(0, 101, 1), 'humidity')
+cloudiness = ctrl.Antecedent(np.arange(0, 101, 1), 'cloudiness')
+temperature = ctrl.Antecedent(np.arange(-10, 41, 1), 'temperature')
+rain = ctrl.Consequent(np.arange(0, 101, 1), 'rain')
+
+humidity['low'] = fuzz.trimf(humidity.universe, [0, 0, 50])
+humidity['medium'] = fuzz.trimf(humidity.universe, [30, 50, 70])
+humidity['high'] = fuzz.trimf(humidity.universe, [50, 100, 100])
+
+cloudiness['clear'] = fuzz.trimf(cloudiness.universe, [0, 0, 40])
+cloudiness['partly cloudy'] = fuzz.trimf(cloudiness.universe, [20, 50, 80])
+cloudiness['cloudy'] = fuzz.trimf(cloudiness.universe, [60, 100, 100])
+
+temperature['cold'] = fuzz.trimf(temperature.universe, [-10, -10, 15])
+temperature['mild'] = fuzz.trimf(temperature.universe, [10, 20, 30])
+temperature['hot'] = fuzz.trimf(temperature.universe, [25, 40, 40])
+
+rain['low'] = fuzz.trimf(rain.universe, [0, 0, 50])
+rain['medium'] = fuzz.trimf(rain.universe, [25, 50, 75])
+rain['high'] = fuzz.trimf(rain.universe, [50, 100, 100])
+
+# Define rules
+rule1 = ctrl.Rule(humidity['high'] & cloudiness['cloudy'], rain['high'])
+rule2 = ctrl.Rule(humidity['medium'] & cloudiness['partly cloudy'], rain['medium'])
+rule3 = ctrl.Rule(humidity['low'] & cloudiness['clear'], rain['low'])
+rule4 = ctrl.Rule(cloudiness['cloudy'] & temperature['cold'], rain['high'])
+
+rain_ctrl = ctrl.ControlSystem([rule1, rule2, rule3, rule4])
+rain_sim = ctrl.ControlSystemSimulation(rain_ctrl)
+
+# Function to get user input
+def get_input(prompt, min_val, max_val):
+    while True:
+        try:
+            val = float(input(f"{prompt} ({min_val}–{max_val}): "))
+            if min_val <= val <= max_val:
+                return val
+            print(f"Please enter a value between {min_val} and {max_val}.")
+        except ValueError:
+            print("Invalid format. Please enter a number.")
+
+# Get user input
+rain_sim.input['humidity'] = get_input("Enter Humidity (%)", 0, 100)
+rain_sim.input['cloudiness'] = get_input("Enter Cloudiness (%)", 0, 100)
+rain_sim.input['temperature'] = get_input("Enter Temperature (°C)", -10, 40)
+
+rain_sim.compute()
+rain_chance = rain_sim.output['rain']
+print(f"\nPredicted Rain Chance: {rain_chance:.2f}%")
+
+# Provide recommendation based on rain chance
+if rain_chance > 50:
+    print("It's likely to rain today. Don't forget to bring an umbrella!")
+else:
+    print("No rain expected today. Enjoy your day!")
